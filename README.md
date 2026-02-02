@@ -69,7 +69,7 @@ src/
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone git@github.com:mwichabe/Secure-Messeger.git
 cd electron
 
 # Install dependencies
