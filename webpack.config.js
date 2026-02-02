@@ -5,7 +5,7 @@ const webpack = require('webpack');
 module.exports = {
   mode: 'development',
   entry: './src/renderer/index.tsx',
-  target: 'web', // Change to web instead of electron-renderer
+  target: 'web',
   devtool: 'source-map',
   resolve: {
     extensions: ['.tsx', '.ts', '.js'],
