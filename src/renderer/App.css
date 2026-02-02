@@ -155,23 +155,25 @@ body {
 .chat-list {
   width: 320px;
   border-right: 1px solid var(--border-color);
-  background: var(--secondary-color);
+  background: #FAFAFA;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .chat-list-header {
   padding: 20px;
   border-bottom: 1px solid var(--border-color);
-  background: var(--surface-color);
+  background: #F5F5F7;
   backdrop-filter: blur(8px);
 }
 
 .chat-list-header h2 {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #1D1D1F;
   letter-spacing: -0.025em;
   display: flex;
   align-items: center;
@@ -180,8 +182,36 @@ body {
 
 .chat-count {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: #666666;
   font-weight: 500;
+  background: rgba(0, 122, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 122, 255, 0.2);
+}
+
+/* Enhanced dark mode for chat list */
+@media (prefers-color-scheme: dark) {
+  .chat-list {
+    background: #000000;
+    border-right-color: #38383A;
+  }
+  
+  .chat-list-header {
+    background: #1C1C1E;
+    border-bottom-color: #38383A;
+  }
+  
+  .chat-list-header h2 {
+    color: #FFFFFF;
+    font-weight: 700;
+  }
+  
+  .chat-count {
+    color: #A0A0A0;
+    background: rgba(10, 132, 255, 0.2);
+    border-color: rgba(10, 132, 255, 0.3);
+  }
 }
 
 .chat-item {
@@ -193,20 +223,21 @@ body {
   background: var(--surface-color);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  border-left: 3px solid transparent;
 }
 
 .chat-item:hover {
-  background: var(--secondary-color);
-  transform: translateX(4px);
+  background: #E8F4FD;
+  transform: translateX(2px);
   box-shadow: var(--shadow-sm);
-  border-color: var(--primary-color);
+  border-left-color: var(--primary-color);
 }
 
 .chat-item.selected {
-  background: linear-gradient(135deg, #F0F8FF 0%, #E6F3FF 100%);
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
   border-left: 4px solid var(--primary-color);
   box-shadow: var(--shadow-md);
-  transform: translateX(2px);
+  transform: translateX(1px);
 }
 
 .chat-item.selected::before {
@@ -233,8 +264,8 @@ body {
 }
 
 .chat-title {
-  font-weight: 600;
-  color: var(--text-primary);
+  font-weight: 700;
+  color: #1A1A1A;
   font-size: 15px;
   letter-spacing: -0.025em;
   flex: 1;
@@ -245,12 +276,13 @@ body {
 
 .chat-timestamp {
   font-size: 11px;
-  color: var(--text-secondary);
-  font-weight: 500;
+  color: #666666;
+  font-weight: 600;
   margin-left: 8px;
-  background: var(--secondary-color);
+  background: rgba(0, 122, 255, 0.1);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 122, 255, 0.2);
 }
 
 .chat-item-preview {
@@ -261,13 +293,13 @@ body {
 }
 
 .chat-preview-text {
-  color: var(--text-secondary);
+  color: #4A4A4A;
   font-size: 13px;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  opacity: 0.8;
+  font-weight: 500;
 }
 
 .unread-count {
@@ -279,10 +311,50 @@ body {
   font-weight: 700;
   min-width: 20px;
   text-align: center;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 4px rgba(0, 122, 255, 0.3);
   flex-shrink: 0;
   border: 2px solid var(--surface-color);
   transform: scale(1.05);
+}
+
+/* Enhanced dark mode support for chat items */
+@media (prefers-color-scheme: dark) {
+  .chat-item {
+    background: #1C1C1E;
+    border-bottom-color: #38383A;
+  }
+  
+  .chat-item:hover {
+    background: #2C2C2E;
+    border-left-color: var(--primary-color);
+  }
+  
+  .chat-item.selected {
+    background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%);
+    border-left-color: var(--primary-color);
+  }
+  
+  .chat-title {
+    color: #FFFFFF;
+    font-weight: 700;
+  }
+  
+  .chat-timestamp {
+    color: #A0A0A0;
+    background: rgba(10, 132, 255, 0.2);
+    border-color: rgba(10, 132, 255, 0.3);
+  }
+  
+  .chat-preview-text {
+    color: #C0C0C0;
+    font-weight: 500;
+  }
+  
+  .unread-count {
+    background: var(--primary-color);
+    border-color: #1C1C1E;
+    box-shadow: 0 2px 4px rgba(10, 132, 255, 0.4);
+  }
 }
 
 .chat-list-container {
