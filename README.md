@@ -4,7 +4,7 @@ A secure messenger desktop application built with Electron, React, and TypeScrip
 
 ## Features
 
-### ✅ Core Requirements Implemented
+### Core Requirements Implemented
 
 - **Local Database (SQLite)**: Efficient data storage with proper indexing and pagination
 - **Real-time Sync**: WebSocket-based message synchronization with connection health monitoring
@@ -12,7 +12,7 @@ A secure messenger desktop application built with Electron, React, and TypeScrip
 - **Security Boundaries**: Clean separation of encryption/decryption logic with data sanitization
 - **Connection Resilience**: Exponential backoff reconnection and heartbeat monitoring
 
-### 🚀 Technical Features
+### Technical Features
 
 - **200+ chats** and **20,000+ messages** seed data
 - **Pagination**: Efficient 50-item pagination for both chats and messages
@@ -203,4 +203,5 @@ ISC License - see LICENSE file for details.
 ---
 
 **Note**: This is a demonstration application for assessment purposes. The encryption implementation is intentionally simplified and should not be used in production environments.
+
 # Secure-Messeger
