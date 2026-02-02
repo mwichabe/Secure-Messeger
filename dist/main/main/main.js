@@ -191,7 +191,6 @@ class MessengerApp {
         // Load the app
         if (process.env.NODE_ENV === 'development') {
             this.mainWindow.loadURL('http://localhost:3000');
-            this.mainWindow.webContents.openDevTools();
         }
         else {
             this.mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));

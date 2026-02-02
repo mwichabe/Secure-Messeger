@@ -168,7 +168,7 @@ class MessengerApp {
     this.mainWindow = new BrowserWindow({
       width: 1200,
       height: 800,
-      show: false, // Don't show until ready
+      show: false,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -179,18 +179,15 @@ class MessengerApp {
     // Load the app
     if (process.env.NODE_ENV === 'development') {
       this.mainWindow.loadURL('http://localhost:3000');
-      this.mainWindow.webContents.openDevTools();
     } else {
       this.mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
     }
 
-    // Show window when ready to prevent white flash
     this.mainWindow.once('ready-to-show', () => {
       this.mainWindow?.show();
       this.mainWindow?.focus();
     });
 
-    // Debugging: log window events
     this.mainWindow.webContents.on('did-finish-load', () => {
       console.log('Window finished loading');
     });
