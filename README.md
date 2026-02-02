@@ -70,7 +70,7 @@ src/
 ```bash
 # Clone the repository
 git clone git@github.com:mwichabe/Secure-Messeger.git
-cd electron
+cd Secure-Messeger
 
 # Install dependencies
 npm install
