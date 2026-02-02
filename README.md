@@ -58,6 +58,20 @@ src/
 - **IPC Security**: Context isolation with preload script for secure main-renderer communication
 - **Input Validation**: Message integrity validation before database storage
 
+## Screenshots
+
+### Application Overview
+![Chat List with Message View](./public/assets/Screen%20Shot%202026-02-02%20at%2021.23.49.png)
+
+### Component Details
+![Components in Action](./public/assets/Screen%20Shot%202026-02-02%20at%2021.26.53.png)
+
+These screenshots showcase:
+- **ChatList Component**: Virtualized chat list with 200+ chats, search functionality, and unread indicators
+- **MessageView Component**: Real-time message display with pagination and smooth scrolling
+- **ConnectionIndicator Component**: Visual status indicator showing connection state (Connected/Reconnecting/Offline)
+- **Security Features**: Encrypted message display and secure data synchronization
+
 ## Setup Instructions
 
 ### Prerequisites
