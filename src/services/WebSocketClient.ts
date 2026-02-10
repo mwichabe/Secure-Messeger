@@ -14,7 +14,9 @@ export class WebSocketClient {
   private maxReconnectAttempts = 10;
   private baseReconnectDelay = 1000; // 1 second
   private heartbeatInterval: NodeJS.Timeout | null = null;
+  private heartbeatTimeout: NodeJS.Timeout | null = null;
   private events: WebSocketClientEvents;
+  private isManualDisconnect = false;
 
   constructor(serverUrl: string, events: WebSocketClientEvents) {
     this.serverUrl = serverUrl;
@@ -27,6 +29,7 @@ export class WebSocketClient {
       return;
     }
 
+    this.isManualDisconnect = false;
     this.setConnectionState(ConnectionState.CONNECTING);
 
     try {
@@ -46,6 +49,7 @@ export class WebSocketClient {
             
             if (message.type === 'pong') {
               // Heartbeat response received
+              this.resetHeartbeatTimeout();
               return;
             }
 
@@ -60,26 +64,42 @@ export class WebSocketClient {
           console.log(`WebSocket connection closed: ${code} - ${reason}`);
           this.stopHeartbeat();
           this.setConnectionState(ConnectionState.DISCONNECTED);
-          this.handleReconnect();
+          
+          if (!this.isManualDisconnect) {
+            this.handleReconnect();
+          }
         });
 
         this.ws.on('error', (error: Error) => {
           console.error('WebSocket error:', error);
           this.setConnectionState(ConnectionState.DISCONNECTED);
+          
+          if (!this.isManualDisconnect) {
+            this.handleReconnect();
+          }
+        });
+
+        // Set connection timeout
+        this.ws.on('ping', () => {
+          console.log('WebSocket ping received');
         });
       }
 
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       this.setConnectionState(ConnectionState.DISCONNECTED);
-      this.handleReconnect();
+      
+      if (!this.isManualDisconnect) {
+        this.handleReconnect();
+      }
     }
   }
 
   disconnect(): void {
+    this.isManualDisconnect = true;
     this.stopHeartbeat();
     if (this.ws) {
-      this.ws.close();
+      this.ws.close(1000, 'Manual disconnect');
       this.ws = null;
     }
     this.setConnectionState(ConnectionState.DISCONNECTED);
@@ -88,9 +108,16 @@ export class WebSocketClient {
   private startHeartbeat(): void {
     this.stopHeartbeat();
     
+    // Send initial ping
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'ping' }));
+    }
+
+    // Set up heartbeat interval
     this.heartbeatInterval = setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({ type: 'ping' }));
+        this.setHeartbeatTimeout();
       }
     }, 10000); // Send ping every 10 seconds
   }
@@ -99,6 +126,31 @@ export class WebSocketClient {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
+    }
+    
+    if (this.heartbeatTimeout) {
+      clearTimeout(this.heartbeatTimeout);
+      this.heartbeatTimeout = null;
+    }
+  }
+
+  private setHeartbeatTimeout(): void {
+    if (this.heartbeatTimeout) {
+      clearTimeout(this.heartbeatTimeout);
+    }
+    
+    // Expect pong response within 5 seconds
+    this.heartbeatTimeout = setTimeout(() => {
+      console.warn('Heartbeat timeout - connection may be lost');
+      this.setConnectionState(ConnectionState.RECONNECTING);
+      this.handleReconnect();
+    }, 5000);
+  }
+
+  private resetHeartbeatTimeout(): void {
+    if (this.heartbeatTimeout) {
+      clearTimeout(this.heartbeatTimeout);
+      this.heartbeatTimeout = null;
     }
   }
 
@@ -137,5 +189,17 @@ export class WebSocketClient {
 
   getReconnectAttempts(): number {
     return this.reconnectAttempts;
+  }
+
+  isConnected(): boolean {
+    return this.connectionState === ConnectionState.CONNECTED && 
+           this.ws !== null && 
+           this.ws.readyState === WebSocket.OPEN;
+  }
+
+  send(data: string): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(data);
+    }
   }
 }

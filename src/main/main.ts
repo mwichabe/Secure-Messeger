@@ -91,6 +91,43 @@ class MessengerApp {
       }
     });
 
+    ipcMain.handle('db:sendMessage', async (_, chatId: string, message: string) => {
+      try {
+        // Create message object
+        const newMessage = {
+          chatId,
+          sender: 'You',
+          body: message,
+          ts: Date.now(),
+          read: false
+        };
+
+        // Save to database
+        await this.databaseService.addMessage(newMessage);
+        
+        // Get the generated message ID by querying the latest message
+        const messages = await this.databaseService.getMessages(chatId, 0, 1);
+        const messageId = messages[0]?.id;
+        
+        // Send via WebSocket if connected
+        if (this.webSocketClient.isConnected() && messageId) {
+          const wsMessage: WebSocketMessage = {
+            messageId,
+            chatId,
+            sender: newMessage.sender,
+            body: newMessage.body,
+            ts: newMessage.ts
+          };
+          this.webSocketClient.send(JSON.stringify(wsMessage));
+        }
+
+        return { success: true, messageId };
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    });
+
     // WebSocket operations
     ipcMain.handle('ws:connect', () => {
       this.webSocketClient.connect();
@@ -124,7 +161,7 @@ class MessengerApp {
   private async handleWebSocketMessage(message: WebSocketMessage): Promise<void> {
     try {
       // Validate message integrity
-      if (!securityService.validateMessageIntegrity(message)) {
+      if (!securityService.validateMessage(message)) {
         console.error('Invalid message received:', securityService.sanitizeForLogging(message));
         return;
       }

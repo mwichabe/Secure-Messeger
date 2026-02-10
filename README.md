@@ -60,13 +60,20 @@ src/
 
 ## Screenshots
 
-### Application Overview
-![Chat List with Message View](./public/assets/Screen%20Shot%202026-02-02%20at%2021.23.49.png)
+### Application Landing Page
 
-### Component Details
-![Components in Action](./public/assets/Screen%20Shot%202026-02-02%20at%2021.26.53.png)
+![Chat List with Message View](./public/assets/landing.png)
+
+### Home Page
+
+![Components in Action](./public/assets/home.png)
+
+### Chat Page
+
+![Components in Action](./public/assets/chat.png)
 
 These screenshots showcase:
+
 - **ChatList Component**: Virtualized chat list with 200+ chats, search functionality, and unread indicators
 - **MessageView Component**: Real-time message display with pagination and smooth scrolling
 - **ConnectionIndicator Component**: Visual status indicator showing connection state (Connected/Reconnecting/Offline)

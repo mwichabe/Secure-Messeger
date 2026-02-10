@@ -1,23 +1,17 @@
-/**
- * SecurityService - Encryption boundary for secure messaging
- * 
- * In a real implementation, this would use proper encryption libraries like:
- * - crypto (Node.js built-in)
- * - libsodium
- * - node-forge
- * 
- * For this demo, we use base64 encoding as a placeholder to demonstrate
- * the security boundaries and prevent sensitive data logging.
- */
+import * as crypto from 'crypto';
 
 export class SecurityService {
   private static instance: SecurityService;
+
   private encryptionKey: string;
 
+  private readonly ALGORITHM = 'aes-256-gcm';
+  private readonly KEY_LENGTH = 32;
+  private readonly IV_LENGTH = 12;
+  private readonly TAG_LENGTH = 16;
+
   private constructor() {
-    // In a real app, this would be securely stored and derived
-    // from user credentials or system keychain
-    this.encryptionKey = 'demo-key-not-for-production';
+    this.encryptionKey = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
   }
 
   public static getInstance(): SecurityService {
@@ -28,41 +22,133 @@ export class SecurityService {
   }
 
   /**
-   * Encrypts sensitive data
-   * In production: Use AES-256-GCM or similar
+   * Encrypts data using AES-256-GCM
+   * @param data - Plaintext to encrypt
+   * @returns JSON string containing base64-encoded ciphertext, IV and auth tag
    */
   public encrypt(data: string): string {
-    try {
-      // Placeholder: Base64 encoding (NOT real encryption)
-      // Real implementation would use proper encryption
-      const encrypted = Buffer.from(data).toString('base64');
-      return encrypted;
-    } catch (error) {
-      console.error('Encryption failed:', error);
-      throw new Error('Encryption failed');
-    }
+    const iv = crypto.randomBytes(this.IV_LENGTH);
+    
+    const cipher = crypto.createCipheriv(
+      this.ALGORITHM,
+      Buffer.from(this.encryptionKey, 'utf8'), 
+      iv
+    );
+
+    const encrypted = Buffer.concat([
+      cipher.update(Buffer.from(data, 'utf8')),
+      cipher.final()
+    ]);
+
+    const authTag = cipher.getAuthTag();
+
+    const payload = {
+      iv: iv.toString('base64'),
+      tag: authTag.toString('base64'),
+      data: encrypted.toString('base64'),
+      alg: this.ALGORITHM
+    };
+
+    return JSON.stringify(payload);
   }
 
   /**
-   * Decrypts sensitive data
-   * In production: Use corresponding decryption algorithm
+   * Decrypts AES-256-GCM encrypted data
+   * @param encryptedData - JSON string from encrypt()
+   * @returns Decrypted plaintext
+   * @throws Error if decryption or authentication fails
    */
   public decrypt(encryptedData: string): string {
+    let payload: any;
+
     try {
-      // Placeholder: Base64 decoding (NOT real decryption)
-      // Real implementation would use proper decryption
-      const decrypted = Buffer.from(encryptedData, 'base64').toString('utf-8');
-      return decrypted;
-    } catch (error) {
-      console.error('Decryption failed:', error);
-      throw new Error('Decryption failed');
+      payload = JSON.parse(encryptedData);
+    } catch {
+      throw new Error('Invalid encrypted data format');
     }
+
+    if (!payload.iv || !payload.tag || !payload.data) {
+      throw new Error('Missing required encryption fields');
+    }
+
+    const iv = Buffer.from(payload.iv, 'base64');
+    const tag = Buffer.from(payload.tag, 'base64');
+    const encrypted = Buffer.from(payload.data, 'base64');
+
+    const decipher = crypto.createDecipheriv(
+      this.ALGORITHM,
+      Buffer.from(this.encryptionKey, 'utf8'),
+      iv
+    );
+
+    decipher.setAuthTag(tag);
+
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final()
+    ]);
+
+    return decrypted.toString('utf8');
   }
 
-  /**
-   * Sanitizes data for logging (removes sensitive content)
-   */
-  public sanitizeForLogging(data: any): any {
+  public validateMessage(message: unknown): message is {
+    chatId: string;
+    messageId: string;
+    ts: number;
+    sender: string;
+    body: string;
+    [key: string]: unknown;
+  } {
+    console.log('Validating message:', message);
+    
+    if (!message || typeof message !== 'object') {
+      console.log('Message is not an object or is null/undefined');
+      return false;
+    }
+
+    const msg = message as Record<string, unknown>;
+    console.log('Message keys:', Object.keys(msg));
+
+    const requiredFields = ['chatId', 'messageId', 'ts', 'sender', 'body'] as const;
+    
+    for (const field of requiredFields) {
+      if (!(field in msg)) {
+        console.log(`Missing required field: ${field}`);
+        return false;
+      }
+    }
+
+    if (
+      typeof msg.chatId !== 'string'     || msg.chatId.length === 0 ||
+      typeof msg.messageId !== 'string' || msg.messageId.length === 0 ||
+      typeof msg.ts !== 'number'        || msg.ts <= 0 ||
+      typeof msg.sender !== 'string'     || msg.sender.length === 0 ||
+      typeof msg.body !== 'string'      || msg.body.length === 0
+    ) {
+      console.log('Field validation failed:', {
+        chatId: typeof msg.chatId,
+        messageId: typeof msg.messageId,
+        ts: typeof msg.ts,
+        sender: typeof msg.sender,
+        body: typeof msg.body,
+        chatIdValue: msg.chatId,
+        messageIdValue: msg.messageId,
+        tsValue: msg.ts,
+        senderValue: msg.sender,
+        bodyValue: msg.body
+      });
+      return false;
+    }
+
+    // Reasonable upper bounds
+    if (msg.body.length > 8192) return false;
+    if (msg.sender.length > 256) return false;
+
+    console.log('Message validation passed');
+    return true;
+  }
+
+  public sanitizeForLogging<T>(data: T): T | any {
     if (typeof data === 'string') {
       return '[REDACTED]';
     }
@@ -71,14 +157,19 @@ export class SecurityService {
       return data.map(item => this.sanitizeForLogging(item));
     }
 
-    if (typeof data === 'object' && data !== null) {
-      const sanitized: any = {};
+    if (data && typeof data === 'object') {
+      const sanitized: Record<string, any> = {};
       for (const [key, value] of Object.entries(data)) {
-        if (key.toLowerCase().includes('body') || 
-            key.toLowerCase().includes('message') ||
-            key.toLowerCase().includes('content')) {
+        const lowerKey = key.toLowerCase();
+        if (
+          lowerKey.includes('password') ||
+          lowerKey.includes('token') ||
+          lowerKey.includes('key') ||
+          lowerKey.includes('secret') ||
+          ['body', 'message', 'content', 'text', 'data', 'payload'].includes(lowerKey)
+        ) {
           sanitized[key] = '[REDACTED]';
-        } else if (typeof value === 'object') {
+        } else if (typeof value === 'object' && value !== null) {
           sanitized[key] = this.sanitizeForLogging(value);
         } else {
           sanitized[key] = value;
@@ -90,27 +181,20 @@ export class SecurityService {
     return data;
   }
 
-  /**
-   * Generates a secure random message ID
-   */
   public generateSecureId(): string {
-    // In production: Use cryptographically secure random generator
-    return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const timestamp = Date.now();
+    const entropy = crypto.randomBytes(16).toString('hex');
+    return `msg_${timestamp}_${entropy}`;
   }
 
-  /**
-   * Validates message integrity
-   */
-  public validateMessageIntegrity(message: any): boolean {
-    // In production: Verify HMAC or digital signature
-    return message && 
-           typeof message.id === 'string' && 
-           typeof message.chatId === 'string' &&
-           typeof message.ts === 'number' &&
-           typeof message.sender === 'string' &&
-           typeof message.body === 'string';
+  public generateSalt(): Buffer {
+    return crypto.randomBytes(32);
+  }
+
+  // Placeholder — implement proper key derivation when needed
+  private deriveKey(password: string, salt: Buffer): Buffer {
+    return crypto.pbkdf2Sync(password, salt, 600_000, 32, 'sha256');
   }
 }
 
-// Export singleton instance
 export const securityService = SecurityService.getInstance();

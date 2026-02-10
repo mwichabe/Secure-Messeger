@@ -43,7 +43,7 @@ const ConnectionIndicator: React.FC = () => {
       case ConnectionState.RECONNECTING:
         return `Reconnecting... (${localReconnectAttempts})`;
       case ConnectionState.DISCONNECTED:
-        return 'Offline';
+        return '';
       default:
         return 'Unknown';
     }

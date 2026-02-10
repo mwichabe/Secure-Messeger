@@ -1,6 +1,8 @@
 export interface Chat {
   id: string;
   title: string;
+  participants: string;
+  lastMessage: string;
   lastMessageAt: number;
   unreadCount: number;
 }
@@ -38,4 +40,15 @@ export interface DatabaseService {
   markChatAsRead(chatId: string): Promise<void>;
   updateChatLastMessage(chatId: string, ts: number): Promise<void>;
   incrementUnreadCount(chatId: string): Promise<void>;
+}
+
+export interface ChatState {
+  messages: Message[];
+  loading: boolean;
+  error: string | null;
+  hasMore: boolean;
+  offset: number;
+  limit: number;
+  searchResults: Message[];
+  searching: boolean;
 }

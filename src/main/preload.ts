@@ -9,6 +9,7 @@ export interface ElectronAPI {
   getMessages: (chatId: string, offset: number, limit: number) => Promise<{ messages: any[]; hasMore: boolean }>;
   searchMessages: (chatId: string, query: string, limit: number) => Promise<any[]>;
   markChatAsRead: (chatId: string) => Promise<{ success: boolean; error?: string }>;
+  sendMessage: (chatId: string, message: string) => Promise<{ success: boolean; messageId?: string; error?: string }>;
   
   // WebSocket operations
   connectWebSocket: () => void;
@@ -35,6 +36,7 @@ const electronAPI: ElectronAPI = {
   getMessages: (chatId, offset, limit) => ipcRenderer.invoke('db:getMessages', chatId, offset, limit),
   searchMessages: (chatId, query, limit) => ipcRenderer.invoke('db:searchMessages', chatId, query, limit),
   markChatAsRead: (chatId) => ipcRenderer.invoke('db:markChatAsRead', chatId),
+  sendMessage: (chatId, message) => ipcRenderer.invoke('db:sendMessage', chatId, message),
   
   // WebSocket operations
   connectWebSocket: () => ipcRenderer.invoke('ws:connect'),

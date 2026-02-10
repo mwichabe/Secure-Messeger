@@ -20,8 +20,12 @@ export class DatabaseService implements IDatabaseService {
         CREATE TABLE IF NOT EXISTS chats (
           id TEXT PRIMARY KEY,
           title TEXT NOT NULL,
+          participants TEXT NOT NULL,
+          lastMessage TEXT NOT NULL,
           lastMessageAt INTEGER NOT NULL,
-          unreadCount INTEGER DEFAULT 0
+          unreadCount INTEGER DEFAULT 0,
+          createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+          updatedAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
         );
         
         CREATE TABLE IF NOT EXISTS messages (
@@ -30,13 +34,35 @@ export class DatabaseService implements IDatabaseService {
           ts INTEGER NOT NULL,
           sender TEXT NOT NULL,
           body TEXT NOT NULL,
+          encrypted INTEGER DEFAULT 0,
+          createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
           FOREIGN KEY (chatId) REFERENCES chats (id) ON DELETE CASCADE
         );
         
-        -- Indexes for performance
+        -- Enhanced indexes for performance
         CREATE INDEX IF NOT EXISTS idx_chats_lastMessageAt ON chats (lastMessageAt DESC);
+        CREATE INDEX IF NOT EXISTS idx_chats_createdAt ON chats (createdAt DESC);
+        CREATE INDEX IF NOT EXISTS idx_chats_unreadCount ON chats (unreadCount DESC);
         CREATE INDEX IF NOT EXISTS idx_messages_chatId_ts ON messages (chatId, ts DESC);
-        CREATE INDEX IF NOT EXISTS idx_messages_body_fts ON messages (body);
+        CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages (sender);
+        CREATE INDEX IF NOT EXISTS idx_messages_createdAt ON messages (createdAt DESC);
+        
+        -- Full-text search index for message content
+        CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(body, content='messages', tokenize='porter');
+        
+        -- Trigger to update FTS table
+        CREATE TRIGGER IF NOT EXISTS messages_fts_insert AFTER INSERT ON messages BEGIN
+          INSERT INTO messages_fts(rowid, body) VALUES (new.id, new.body);
+        END;
+        
+        CREATE TRIGGER IF NOT EXISTS messages_fts_delete AFTER DELETE ON messages BEGIN
+          INSERT INTO messages_fts(messages_fts, body) VALUES ('delete', old.body);
+        END;
+        
+        CREATE TRIGGER IF NOT EXISTS messages_fts_update AFTER UPDATE ON messages BEGIN
+          INSERT INTO messages_fts(messages_fts, body) VALUES ('delete', old.body);
+          INSERT INTO messages_fts(rowid, body) VALUES (new.id, new.body);
+        END;
       `);
 
       // Enable foreign key constraints
@@ -60,8 +86,8 @@ export class DatabaseService implements IDatabaseService {
 
         // Insert 200 chats
         const chatInsert = this.db!.prepare(`
-          INSERT INTO chats (id, title, lastMessageAt, unreadCount) 
-          VALUES (?, ?, ?, ?)
+          INSERT INTO chats (id, title, participants, lastMessage, lastMessageAt, unreadCount) 
+          VALUES (?, ?, ?, ?, ?, ?)
         `);
 
         const messageInsert = this.db!.prepare(`
@@ -92,14 +118,27 @@ export class DatabaseService implements IDatabaseService {
           const lastMessageAt = now - (i * 1000 * 60); // Spread over time
           const unreadCount = Math.floor(Math.random() * 10);
           
-          chatInsert.run(chatId, chatTitle, lastMessageAt, unreadCount);
+          // Generate random participants (2-3 people per chat)
+          const participantCount = 2 + Math.floor(Math.random() * 2);
+          const chatParticipants: string[] = [];
+          for (let p = 0; p < participantCount; p++) {
+            const sender = senders[Math.floor(Math.random() * senders.length)];
+            if (!chatParticipants.includes(sender)) {
+              chatParticipants.push(sender);
+            }
+          }
+          
+          // Get a random message as the last message
+          const lastMessageText = messageTemplates[Math.floor(Math.random() * messageTemplates.length)];
+          
+          chatInsert.run(chatId, chatTitle, chatParticipants.join(','), lastMessageText, lastMessageAt, unreadCount);
           
           // Create 100 messages per chat (20,000 total)
           const messageCount = 100;
           for (let j = 0; j < messageCount; j++) {
             const messageId = `msg_${i}_${j}`;
             const messageTs = lastMessageAt - ((messageCount - j) * 1000 * 60 * 5); // 5 min intervals
-            const sender = senders[Math.floor(Math.random() * senders.length)];
+            const sender = chatParticipants[Math.floor(Math.random() * chatParticipants.length)];
             const body = messageTemplates[Math.floor(Math.random() * messageTemplates.length)];
             
             messageInsert.run(messageId, chatId, messageTs, sender, body);
@@ -119,7 +158,7 @@ export class DatabaseService implements IDatabaseService {
     if (!this.db) throw new Error('Database not initialized');
 
     const stmt = this.db.prepare(`
-      SELECT id, title, lastMessageAt, unreadCount 
+      SELECT id, title, participants, lastMessage, lastMessageAt, unreadCount 
       FROM chats 
       ORDER BY lastMessageAt DESC 
       LIMIT ? OFFSET ?
@@ -159,15 +198,17 @@ export class DatabaseService implements IDatabaseService {
   async searchMessages(chatId: string, query: string, limit: number): Promise<Message[]> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const stmt = this.db.prepare(`
-      SELECT id, chatId, ts, sender, body 
-      FROM messages 
-      WHERE chatId = ? AND body LIKE ? 
-      ORDER BY ts DESC 
+    // Use full-text search for better performance
+    const ftsQuery = this.db.prepare(`
+      SELECT m.id, m.chatId, m.ts, m.sender, m.body 
+      FROM messages_fts fts
+      JOIN messages m ON m.id = messages_fts.rowid
+      WHERE m.chatId = ? AND messages_fts MATCH ?
+      ORDER BY m.ts DESC
       LIMIT ?
     `);
 
-    const rows = stmt.all(chatId, `%${query}%`, limit) as Message[];
+    const rows = ftsQuery.all(chatId, query, limit) as Message[];
     return rows;
   }
 

@@ -6,6 +6,7 @@ export interface ElectronAPI {
   getMessages: (chatId: string, offset: number, limit: number) => Promise<{ messages: any[]; hasMore: boolean }>;
   searchMessages: (chatId: string, query: string, limit: number) => Promise<any[]>;
   markChatAsRead: (chatId: string) => Promise<{ success: boolean; error?: string }>;
+  sendMessage: (chatId: string, message: string) => Promise<{ success: boolean; messageId?: string; error?: string }>;
   
   // WebSocket operations
   connectWebSocket: () => void;

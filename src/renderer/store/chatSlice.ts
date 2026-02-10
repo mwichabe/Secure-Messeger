@@ -8,6 +8,7 @@ interface ChatState {
   error: string | null;
   hasMore: boolean;
   offset: number;
+  limit: number;
 }
 
 const initialState: ChatState = {
@@ -17,6 +18,7 @@ const initialState: ChatState = {
   error: null,
   hasMore: true,
   offset: 0,
+  limit: 50,
 };
 
 // Async thunks
